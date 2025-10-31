@@ -1,21 +1,53 @@
-MIT License
+# LICENSE
 
-Copyright (c) 2025 NathanFromLumos
+## Proprietary Software License
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+**On-Page Content Report** - Chrome Extension
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Copyright © 2025 Lumos Digital Marketing Ltd. All rights reserved.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+### Grant of License
+
+Lumos Digital Marketing Ltd grants you a personal, non-exclusive, non-transferable license to use this software solely for your own internal business purposes. This license is revocable at any time.
+
+### Restrictions
+
+You are **strictly prohibited** from:
+
+- **Modifying** the source code in any way
+- **Distributing** this software to third parties
+- **Copying** or cloning the codebase for any purpose
+- **Reverse-engineering** or decompiling the extension
+- **Creating derivative works** based on this software
+- **Selling, renting, or leasing** this software
+- **Sublicensing** any rights granted under this license
+- **Publishing** this extension to the Chrome Web Store or any other distribution channel without written permission
+- **Claiming ownership** or authorship of this work
+
+### Intellectual Property
+
+All code, design, functionality, and concepts contained within this software are the exclusive property of Lumos Digital Marketing Ltd. No ownership rights are transferred to the licensee.
+
+### No Warranty
+
+THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, OR NONINFRINGEMENT.
+
+### Limitation of Liability
+
+IN NO EVENT SHALL LUMOS DIGITAL MARKETING LTD BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES ARISING FROM THE USE OF THIS SOFTWARE.
+
+### Termination
+
+This license is effective until terminated. Your rights under this license will terminate automatically without notice if you fail to comply with any term(s). Upon termination of this license, you shall cease all use of the software and destroy all copies in your possession.
+
+### Contact
+
+For licensing inquiries or permission to modify/redistribute:
+
+**Lumos Digital Marketing Ltd**
+support@lumosdigital.co.uk
+
+---
+
+**Version:** 1.0  
+**Effective Date:** October 31, 2025
