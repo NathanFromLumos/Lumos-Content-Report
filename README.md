@@ -3,6 +3,7 @@
 A lightweight Chrome extension that pulls the on-page content of any webpage. Quickly extract and analyze meta tags, headings, content hierarchy, and links without leaving your browser.
 
 **Built by [Lumos Digital Marketing Ltd](https://lumosdigital.co.uk)**
+
 **If you'd like to support us, we would love it if you could donate [by using our ko-fi link](https://ko-fi.com/nahtanfromlumos)**
 
 ## Features
