@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "On-Page Content Report",
+  "version": "1.0.0",
+  "description": "Instantly generate a readable SEO audit of the current tab.",
+  "author": "Lumos Digital Marketing Ltd",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "On-Page Content Report",
+    "default_icon": {
+      "16": "images/icon-dark-16.png",
+      "24": "images/icon-dark-24.png",
+      "32": "images/icon-dark-32.png"
+    }
+  },
+  "icons": {
+    "16": "images/icon-dark-16.png",
+    "128": "images/icon-dark-128.png"
+  }
+}
+

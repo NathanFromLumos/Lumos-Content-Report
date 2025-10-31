@@ -49,27 +49,6 @@ function extractPageContent() {
     return clone.innerText || clone.textContent || '';
   }
 
-  // Helper: Extract heading with body text
-  function extractHeadingWithBody(headingEl, contentRegion) {
-    const heading = getCleanText(headingEl).trim();
-    const level = parseInt(headingEl.tagName[1]);
-    
-    // Find all text until next heading of same or higher level
-    let body = '';
-    let currentEl = headingEl.nextElementSibling;
-    while (currentEl) {
-      if (currentEl.tagName.match(/^H[1-6]$/)) {
-        const nextLevel = parseInt(currentEl.tagName[1]);
-        if (nextLevel <= level) break; // Stop at same or higher level heading
-      }
-      if (!shouldExclude(currentEl) && isVisible(currentEl)) {
-        body += getCleanText(currentEl).trim() + '\n';
-      }
-      currentEl = currentEl.nextElementSibling;
-    }
-    return { heading: heading.trim(), body: body.trim() };
-  }
-
   // Extract meta data
   const metaTitle = document.querySelector('meta[name="og:title"]')?.getAttribute('content') ||
                     document.querySelector('title')?.innerText ||
@@ -85,21 +64,62 @@ function extractPageContent() {
   const cleanText = getCleanText(contentRegion);
   const wordCount = cleanText.split(/\s+/).filter(word => word.length > 0).length;
 
-  // Extract headings (H1-H3) with bodies
-  const headings = [];
-  const headingEls = contentRegion.querySelectorAll('h1, h2, h3');
-  headingEls.forEach(headingEl => {
-    if (!shouldExclude(headingEl) && isVisible(headingEl)) {
-      const { heading, body } = extractHeadingWithBody(headingEl, contentRegion);
-      if (heading) {
-        headings.push({
-          tag: headingEl.tagName.toLowerCase(),
-          heading: heading,
-          body: body
-        });
+  // Extract headings (H1-H3) with bodies - SIMPLIFIED
+const headings = [];
+const headingEls = contentRegion.querySelectorAll('h1, h2, h3');
+
+headingEls.forEach((headingEl, idx) => {
+  if (!shouldExclude(headingEl) && isVisible(headingEl)) {
+    const headingText = getCleanText(headingEl).trim();
+    
+    if (headingText && headingText.length > 0) {
+      const level = parseInt(headingEl.tagName[1]);
+      
+      // Create a temporary container with the heading and everything after it
+      const tempDiv = document.createElement('div');
+      let current = headingEl.nextElementSibling;
+      let elementCount = 0;
+      
+      // Grab next 50 siblings
+      while (current && elementCount < 50) {
+        const tagName = current.tagName.toLowerCase();
+        
+        // Stop at next heading of same/higher level
+        if (tagName.match(/^h[1-6]$/)) {
+          const nextLevel = parseInt(current.tagName[1]);
+          if (nextLevel <= level) break;
+        }
+        
+        // Clone and add to temp container (don't skip anything)
+        tempDiv.appendChild(current.cloneNode(true));
+        current = current.nextElementSibling;
+        elementCount++;
       }
+      
+      // Extract all text from temp container
+      let body = getCleanText(tempDiv).trim();
+      
+      // Also grab any img alt text specifically
+      const imgAltTexts = [];
+      tempDiv.querySelectorAll('img[alt]').forEach(img => {
+        const alt = img.getAttribute('alt').trim();
+        if (alt) imgAltTexts.push('[IMAGE: ' + alt + ']');
+      });
+      if (imgAltTexts.length > 0) {
+        body = imgAltTexts.join('\n') + '\n' + body;
+      }
+      
+      headings.push({
+        tag: headingEl.tagName.toLowerCase(),
+        heading: headingText,
+        body: body
+      });
     }
-  });
+  }
+});
+
+
+
 
   // Extract links
   const links = [];
@@ -137,12 +157,23 @@ let allLinks = [];
 
 // Initialize on popup load
 document.addEventListener('DOMContentLoaded', async () => {
-  await loadPageData();
-  renderOverview();
-  renderHeadings();
-  renderLinks();
-  attachEventListeners();
+  try {
+    await loadPageData();
+    if (pageData.error) {
+      document.getElementById('overview-content').innerHTML = `<p style="color: red;">Error: ${pageData.error}</p>`;
+      return;
+    }
+    renderOverview();
+    renderHeadings();
+    renderLinks();
+    attachEventListeners();
+    attachButtonListeners();
+  } catch (error) {
+    console.error('Popup error:', error);
+    document.body.innerHTML = `<p style="color: red; padding: 20px;">Error loading page  ${error.message}</p>`;
+  }
 });
+
 
 // Load page data via content script
 async function loadPageData() {
@@ -156,7 +187,7 @@ async function loadPageData() {
     allLinks = pageData.links;
   } catch (error) {
     console.error('Error loading page data:', error);
-    document.getElementById('overview-content').innerHTML = '<p>Error loading page content.</p>';
+    pageData = { error: error.message };
   }
 }
 
@@ -176,9 +207,9 @@ function renderOverview() {
       <div class="meta-box-value"><a href="${pageData.url}" target="_blank" style="color: #0066cc; text-decoration: none;">${escapeHtml(pageData.url)}</a></div>
     </div>
     <div style="margin-top: var(--spacing-md);">
-      <span class="badge badge-count">ðŸ“Š Word Count: ${pageData.wordCount.toLocaleString()}</span>
-      <span class="badge badge-count">ðŸ“ Headings: ${pageData.headings.length}</span>
-      <span class="badge badge-count">ðŸ”— Links: ${pageData.links.length}</span>
+      <span class="badge badge-count">Word Count: ${pageData.wordCount.toLocaleString()}</span>
+      <span class="badge badge-count">Headings: ${pageData.headings.length}</span>
+      <span class="badge badge-count">Links: ${pageData.links.length}</span>
     </div>
   `;
   document.getElementById('overview-content').innerHTML = overviewHtml;
@@ -195,7 +226,7 @@ function renderHeadings() {
     const tag = heading.tag.toUpperCase();
     return `
       <div class="heading-block" data-idx="${idx}">
-        <div class="heading-row" onclick="toggleHeadingBody(${idx})">
+        <div class="heading-row" data-heading-idx="${idx}">
           <span class="heading-toggle">+</span>
           <span class="heading-tag">${tag}</span>
           <span class="heading-text">${escapeHtml(heading.heading)}</span>
@@ -206,7 +237,16 @@ ${escapeHtml(heading.body)}
       </div>
     `;
   }).join('');
+  
   document.getElementById('headings-content').innerHTML = headingsHtml;
+  
+  // Attach event listeners AFTER rendering
+  document.querySelectorAll('.heading-row').forEach(row => {
+    row.addEventListener('click', function() {
+      const idx = this.getAttribute('data-heading-idx');
+      toggleHeadingBody(idx);
+    });
+  });
 }
 
 // Render Links Section
@@ -220,7 +260,6 @@ function renderLinks() {
       <span class="badge badge-nofollow">Nofollow: ${allLinks.filter(l => l.nofollow).length}</span>
     </div>
   `;
-  document.getElementById('links-filter-container').innerHTML = linksSummary + renderFilterButtons();
   
   const linksHtml = allLinks.map((link, idx) => {
     const internalClass = link.internal ? 'true' : 'false';
@@ -240,73 +279,19 @@ function renderLinks() {
       </div>
     `;
   }).join('');
-  document.getElementById('links-content').innerHTML = linksHtml;
-}
-
-// Render Filter Buttons
-function renderFilterButtons() {
-  return `
-    <div class="filter-row">
-      <button type="button" class="filter-btn active" data-filter="all" onclick="filterLinks(this, 'all')">All</button>
-      <button type="button" class="filter-btn" data-filter="internal" onclick="filterLinks(this, 'internal')">Internal</button>
-      <button type="button" class="filter-btn" data-filter="external" onclick="filterLinks(this, 'external')">External</button>
-      <button type="button" class="filter-btn" data-filter="follow" onclick="filterLinks(this, 'follow')">Dofollow</button>
-      <button type="button" class="filter-btn" data-filter="nofollow" onclick="filterLinks(this, 'nofollow')">Nofollow</button>
-    </div>
-  `;
+  
+  document.getElementById('links-content').innerHTML = linksSummary + linksHtml;
 }
 
 // Toggle Heading Body
 function toggleHeadingBody(idx) {
   const body = document.getElementById(`heading-body-${idx}`);
-  const row = document.querySelector(`[data-idx="${idx}"] .heading-row`);
+  const row = document.querySelector(`[data-heading-idx="${idx}"]`);
   const toggle = row.querySelector('.heading-toggle');
   body.classList.toggle('hidden');
   toggle.textContent = body.classList.contains('hidden') ? '+' : '-';
 }
 
-// Filter Links
-function filterLinks(btn, filterType) {
-  // Update active state
-  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-
-  // Apply filter
-  document.querySelectorAll('.link-block').forEach(block => {
-    const internal = block.getAttribute('data-internal') === 'true';
-    const nofollow = block.getAttribute('data-nofollow') === 'true';
-    let show = true;
-
-    if (filterType === 'internal') show = internal;
-    else if (filterType === 'external') show = !internal;
-    else if (filterType === 'follow') show = !nofollow;
-    else if (filterType === 'nofollow') show = nofollow;
-    // 'all' shows all
-
-    if (show) {
-      block.classList.remove('hidden');
-    } else {
-      block.classList.add('hidden');
-    }
-  });
-}
-
-// Print Report
-document.getElementById('print-btn')?.addEventListener('click', () => {
-  window.print();
-});
-
-// Export Headings CSV
-document.getElementById('export-headings-btn')?.addEventListener('click', () => {
-  const csv = generateHeadingsCSV();
-  downloadCSV(csv, 'headings');
-});
-
-// Export Links CSV
-document.getElementById('export-links-btn')?.addEventListener('click', () => {
-  const csv = generateLinksCSV();
-  downloadCSV(csv, 'links');
-});
 
 // Generate Headings CSV
 function generateHeadingsCSV() {
@@ -350,6 +335,154 @@ function downloadCSV(csvContent, type) {
   document.body.removeChild(link);
 }
 
+// Generate full HTML report
+function generateReportHTML() {
+  const headingsHtml = pageData.headings.map(heading => {
+    const tag = heading.tag.toUpperCase();
+    return `
+      <div style="margin-bottom: 20px; border: 1px solid #e0e0e0; padding: 15px; border-radius: 6px;">
+        <div style="font-weight: 700; margin-bottom: 8px;">
+          <span style="background: #384c55; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; margin-right: 8px;">${tag}</span>
+          ${escapeHtml(heading.heading)}
+        </div>
+        <div style="color: #666; font-size: 14px; line-height: 1.6; white-space: pre-wrap;">
+          ${escapeHtml(heading.body)}
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const linksHtml = pageData.links.map(link => `
+    <div style="margin-bottom: 12px; padding: 12px; background: #fafafa; border-radius: 6px;">
+      <div style="font-size: 12px; color: #0066cc; margin-bottom: 4px; word-break: break-all;">
+        ${escapeHtml(link.url)}
+      </div>
+      <div style="font-size: 13px; margin-bottom: 6px;">
+        ${escapeHtml(link.text)}
+      </div>
+      <div>
+        <span style="background: ${link.internal ? '#28966B' : '#f0ad4e'}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px; margin-right: 6px;">
+          ${link.internal ? 'INTERNAL' : 'EXTERNAL'}
+        </span>
+        <span style="background: ${link.nofollow ? '#d4a5a5' : '#28966B'}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 11px;">
+          ${link.nofollow ? 'NOFOLLOW' : 'FOLLOW'}
+        </span>
+      </div>
+    </div>
+  `).join('');
+
+  return `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="UTF-8">
+      <title>SEO Audit Report - ${pageData.hostname}</title>
+      <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+      <style>
+        body {
+          font-family: 'Inter', sans-serif;
+          max-width: 900px;
+          margin: 0 auto;
+          padding: 40px 20px;
+          background-color: #f5f5f5;
+          color: #161616;
+        }
+        .header {
+          background: #384c55;
+          color: #f5f5f5;
+          padding: 30px;
+          border-radius: 8px;
+          margin-bottom: 30px;
+          text-align: center;
+        }
+        .header h1 {
+          font-family: 'Space Grotesk', sans-serif;
+          font-size: 32px;
+          margin: 0 0 10px 0;
+        }
+        .header p {
+          margin: 5px 0;
+          opacity: 0.9;
+        }
+        .section {
+          background: white;
+          padding: 25px;
+          margin-bottom: 25px;
+          border-radius: 8px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        .section h2 {
+          font-family: 'Space Grotesk', sans-serif;
+          color: #384c55;
+          border-bottom: 3px solid #384c55;
+          padding-bottom: 15px;
+          margin-bottom: 20px;
+        }
+        .meta-box {
+          background: #fafafa;
+          border-left: 4px solid #28966B;
+          padding: 15px;
+          margin-bottom: 15px;
+          border-radius: 4px;
+        }
+        .meta-label {
+          font-weight: 700;
+          color: #384c55;
+          font-size: 12px;
+          text-transform: uppercase;
+          margin-bottom: 6px;
+        }
+        .badges {
+          display: flex;
+          gap: 10px;
+          flex-wrap: wrap;
+          margin-bottom: 15px;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="header">
+        <h1>SEO Audit Report</h1>
+        <p>Powered by Lumos Digital Marketing Ltd</p>
+        <p style="font-size: 12px; margin-top: 15px;">${pageData.hostname}</p>
+      </div>
+
+      <div class="section">
+        <h2>Overview</h2>
+        <div class="meta-box">
+          <div class="meta-label">Meta Title</div>
+          <div>${escapeHtml(pageData.metaTitle)}</div>
+        </div>
+        <div class="meta-box">
+          <div class="meta-label">Meta Description</div>
+          <div>${escapeHtml(pageData.metaDesc)}</div>
+        </div>
+        <div class="meta-box">
+          <div class="meta-label">Page URL</div>
+          <div style="word-break: break-all;"><a href="${pageData.url}" target="_blank" style="color: #0066cc;">${escapeHtml(pageData.url)}</a></div>
+        </div>
+        <div class="badges">
+          <span style="border: 2px solid #384c55; padding: 8px 14px; border-radius: 20px; font-weight: 600;">Word Count: ${pageData.wordCount.toLocaleString()}</span>
+          <span style="border: 2px solid #384c55; padding: 8px 14px; border-radius: 20px; font-weight: 600;">Headings: ${pageData.headings.length}</span>
+          <span style="border: 2px solid #384c55; padding: 8px 14px; border-radius: 20px; font-weight: 600;">Links: ${pageData.links.length}</span>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Content Hierarchy</h2>
+        ${headingsHtml}
+      </div>
+
+      <div class="section">
+        <h2>Links</h2>
+        ${linksHtml}
+      </div>
+    </body>
+    </html>
+  `;
+}
+
+
 // Utility: Escape HTML
 function escapeHtml(text) {
   const div = document.createElement('div');
@@ -359,5 +492,34 @@ function escapeHtml(text) {
 
 // Attach event listeners
 function attachEventListeners() {
-  // All listeners are attached inline in the render functions for simplicity
+  // All listeners attached above
+}
+// Attach button listeners (called after DOM is ready)
+function attachButtonListeners() {
+  const exportHeadingsBtn = document.getElementById('export-headings-btn');
+  const exportLinksBtn = document.getElementById('export-links-btn');
+  const openTabBtn = document.getElementById('open-tab-btn');
+  
+  if (exportHeadingsBtn) {
+    exportHeadingsBtn.addEventListener('click', () => {
+      const csv = generateHeadingsCSV();
+      downloadCSV(csv, 'headings');
+    });
+  }
+  
+  if (exportLinksBtn) {
+    exportLinksBtn.addEventListener('click', () => {
+      const csv = generateLinksCSV();
+      downloadCSV(csv, 'links');
+    });
+  }
+  
+  if (openTabBtn) {
+    openTabBtn.addEventListener('click', () => {
+      const reportHTML = generateReportHTML();
+      const blob = new Blob([reportHTML], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      chrome.tabs.create({ url: url });
+    });
+  }
 }
